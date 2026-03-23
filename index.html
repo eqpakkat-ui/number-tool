@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Number Tool Pro MAX</title>
+
+<style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+    background: linear-gradient(135deg, #dbeafe, #f0fdf4);
+}
+
+.container {
+    max-width: 800px;
+    margin: 60px auto;
+    padding: 30px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+}
+
+textarea {
+    width: 100%;
+    height: 130px;
+    padding: 15px;
+    border-radius: 12px;
+    border: 2px solid #000;
+    font-size: 16px;
+}
+
+button {
+    padding: 14px 28px;
+    margin-right: 12px;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+/* 🔵 Copy */
+.btn-copy {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+}
+
+/* 🔴 Reset */
+.btn-cancel {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+}
+
+/* ✨ hover effect */
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+}
+
+/* ⚡ กด */
+button:active {
+    transform: scale(0.95);
+
+}
+
+#output {
+    word-break: break-all;
+    overflow-wrap: break-word;
+    white-space: normal;
+    line-height: 1.6;
+}
+
+
+.stats { margin-top: 10px; font-size: 15px; }
+
+.result-box {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f1f5f9;
+    border-radius: 15px;
+    font-size: 18px;
+}
+
+.highlight {
+    background: yellow;
+    padding: 2px 5px;
+    border-radius: 5px;
+}
+
+.alert {
+    margin-top: 10px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>🚀 Number Tool Pro MAX</h2>
+
+    <textarea id="input" placeholder="ยิงบาร์โค้ดได้เลย"></textarea>
+
+    <br><br>
+
+    <button class="btn-copy" onclick="copyResult()">📋 Copy</button>
+        <button class="btn-cancel" onclick="clearData()">♻️ Reset</button>
+
+    <div class="stats" id="stats">จำนวน: 0 | ซ้ำ: 0</div>
+    <div id="alert"></div>
+
+    <div class="result-box" id="output"></div>
+</div>
+
+<script>
+let allNumbers = [];
+let lastResult = "";
+let duplicateCount = 0;
+let lastScan = "";
+
+const beepOk = new Audio("https://www.soundjay.com/buttons/beep-01a.mp3");
+const beepError = new Audio("https://www.soundjay.com/buttons/beep-10.mp3");
+
+document.getElementById("input").addEventListener("keydown", function(e){
+
+    if(e.key === "Enter"){
+        e.preventDefault();
+
+        let value = this.value.trim();
+        if(!value) return;
+
+        // 🧠 ตรวจ format (ต้องเป็นตัวเลข)
+        if(!/^[0-9]+$/.test(value)){
+            showAlert("❌ รูปแบบไม่ถูกต้อง", true);
+            beepError.play();
+            this.value = "";
+            return;
+        }
+
+        // 🔥 เช็คซ้ำ
+        if(allNumbers.includes(value)){
+            duplicateCount++;
+            showAlert("❌ เลขซ้ำ: " + value, true);
+            beepError.play();
+            this.value = "";
+            return;
+        }
+
+        // ✅ เพิ่ม
+        allNumbers.push(value);
+        lastScan = value;
+
+        processData();
+
+         beepOk.play();
+
+                if(navigator.vibrate) navigator.vibrate(30);
+
+                // ✅ ไม่มี auto copy แล้ว
+        this.value = "";
+    }
+});
+
+function processData(){
+
+    const output = document.getElementById("output");
+    const stats = document.getElementById("stats");
+
+    stats.innerHTML = `จำนวน: ${allNumbers.length} | ซ้ำ: ${duplicateCount}`;
+
+    lastResult = allNumbers.join(",");
+
+    let display = allNumbers.map(n=>{
+        if(n === lastScan){
+            return `<span class="highlight">${n}</span>`;
+        }
+        return n;
+    });
+
+    output.innerHTML = display.join(",");
+      
+       document.getElementById("input").focus();
+}
+
+function showAlert(msg, isError=false){
+
+    const alertBox = document.getElementById("alert");
+
+    alertBox.innerHTML = `
+        <div style="
+            background:${isError ? '#fee2e2' : '#dcfce7'};
+            color:${isError ? '#b91c1c' : '#166534'};
+            padding:15px;
+            border-radius:12px;
+            font-size:20px;
+            font-weight:bold;
+        ">
+        ${msg}
+        </div>
+    `;
+
+    // 🔥 error อยู่ 6 วิ / ปกติ 2 วิ
+    let time = isError ? 6000 : 2000;
+
+    setTimeout(()=>{
+        alertBox.innerHTML = "";
+    }, time);
+}
+function copyResult(){
+ if(!lastResult) return;
+ navigator.clipboard.writeText(lastResult); 
+showAlert("✅ คัดลอกแล้ว");
+ }
+
+function clearData(){
+    allNumbers = [];
+    duplicateCount = 0;
+    lastResult = "";
+    document.getElementById("output").innerHTML = "";
+    document.getElementById("stats").innerHTML = "จำนวน: 0 | ซ้ำ: 0";
+}
+</script>
+
+</body>
+</html>
