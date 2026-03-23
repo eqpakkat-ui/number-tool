@@ -38,43 +38,22 @@ button {
     cursor: pointer;
     font-weight: bold;
     font-size: 16px;
-    transition: all 0.2s ease;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    transition: 0.2s;
 }
 
-/* 🔵 Copy */
 .btn-copy {
     background: linear-gradient(135deg, #22c55e, #16a34a);
     color: white;
 }
 
-/* 🔴 Reset */
 .btn-cancel {
     background: linear-gradient(135deg, #ef4444, #dc2626);
     color: white;
 }
 
-/* ✨ hover effect */
 button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 25px rgba(0,0,0,0.15);
 }
-
-/* ⚡ กด */
-button:active {
-    transform: scale(0.95);
-
-}
-
-#output {
-    word-break: break-all;
-    overflow-wrap: break-word;
-    white-space: normal;
-    line-height: 1.6;
-}
-
-
-.stats { margin-top: 10px; font-size: 15px; }
 
 .result-box {
     margin-top: 20px;
@@ -82,6 +61,7 @@ button:active {
     background: #f1f5f9;
     border-radius: 15px;
     font-size: 18px;
+    word-break: break-all;
 }
 
 .highlight {
@@ -96,20 +76,23 @@ button:active {
     font-weight: bold;
 }
 
+.stats {
+    margin-top: 10px;
+}
 </style>
 </head>
 
 <body>
 
 <div class="container">
-    <h2>🚀 Number Tool Pro MAX</h2>
+    <h2>🚀 Number Tool Pro MAX (ONLINE)</h2>
 
     <textarea id="input" placeholder="ยิงบาร์โค้ดได้เลย"></textarea>
 
     <br><br>
 
     <button class="btn-copy" onclick="copyResult()">📋 Copy</button>
-        <button class="btn-cancel" onclick="clearData()">♻️ Reset</button>
+    <button class="btn-cancel" onclick="clearData()">♻️ Reset</button>
 
     <div class="stats" id="stats">จำนวน: 0 | ซ้ำ: 0</div>
     <div id="alert"></div>
@@ -117,15 +100,38 @@ button:active {
     <div class="result-box" id="output"></div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA....", 
+  authDomain: "number-tool-ab240.firebaseapp.com",
+  databaseURL: "https://number-tool-ab240-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "number-tool-ab240"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
 let allNumbers = [];
-let lastResult = "";
-let duplicateCount = 0;
 let lastScan = "";
+let duplicateCount = 0;
 
-const beepOk = new Audio("https://www.soundjay.com/buttons/beep-01a.mp3");
-const beepError = new Audio("https://www.soundjay.com/buttons/beep-10.mp3");
+// 🔥 รับข้อมูล realtime ทุกเครื่อง
+onValue(ref(db, "numbers"), (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+        allNumbers = [];
+        updateUI();
+        return;
+    }
 
+    allNumbers = Object.values(data);
+    updateUI();
+});
+
+// 🔥 ยิงบาร์โค้ด
 document.getElementById("input").addEventListener("keydown", function(e){
 
     if(e.key === "Enter"){
@@ -134,61 +140,63 @@ document.getElementById("input").addEventListener("keydown", function(e){
         let value = this.value.trim();
         if(!value) return;
 
-        // 🧠 ตรวจ format (ต้องเป็นตัวเลข)
         if(!/^[0-9]+$/.test(value)){
-            showAlert("❌ รูปแบบไม่ถูกต้อง", true);
-            beepError.play();
+            showAlert("❌ ไม่ใช่ตัวเลข", true);
             this.value = "";
             return;
         }
 
-        // 🔥 เช็คซ้ำ
-        if(allNumbers.includes(value)){
-            duplicateCount++;
-            showAlert("❌ เลขซ้ำ: " + value, true);
-            beepError.play();
-            this.value = "";
-            return;
-        }
+        push(ref(db, "numbers"), value);
 
-        // ✅ เพิ่ม
-        allNumbers.push(value);
         lastScan = value;
-
-        processData();
-
-         beepOk.play();
-
-                if(navigator.vibrate) navigator.vibrate(30);
-
-                // ✅ ไม่มี auto copy แล้ว
         this.value = "";
     }
 });
 
-function processData(){
-
+function updateUI(){
     const output = document.getElementById("output");
     const stats = document.getElementById("stats");
 
-    stats.innerHTML = `จำนวน: ${allNumbers.length} | ซ้ำ: ${duplicateCount}`;
+    let seen = new Set();
+    let duplicates = [];
 
-    lastResult = allNumbers.join(",");
+    allNumbers.forEach(n=>{
+        if(seen.has(n)) duplicates.push(n);
+        else seen.add(n);
+    });
+
+    duplicateCount = duplicates.length;
+
+    stats.innerHTML = `จำนวน: ${allNumbers.length} | ซ้ำ: ${duplicateCount}`;
 
     let display = allNumbers.map(n=>{
         if(n === lastScan){
             return `<span class="highlight">${n}</span>`;
         }
+        if(duplicates.includes(n)){
+            return `<span style="color:red;font-weight:bold">${n}</span>`;
+        }
         return n;
     });
 
     output.innerHTML = display.join(",");
-      
-       document.getElementById("input").focus();
 }
 
-function showAlert(msg, isError=false){
+// 📋 Copy
+window.copyResult = function(){
+    if(!allNumbers.length) return;
+    navigator.clipboard.writeText(allNumbers.join(","));
+    showAlert("✅ คัดลอกแล้ว");
+}
 
+// ♻️ Reset (ล้างทั้งระบบ)
+window.clearData = function(){
+    remove(ref(db, "numbers"));
+    showAlert("🧹 ล้างข้อมูลแล้ว");
+}
+
+// 🔔 แจ้งเตือน
+function showAlert(msg, isError=false){
     const alertBox = document.getElementById("alert");
 
     alertBox.innerHTML = `
@@ -197,32 +205,12 @@ function showAlert(msg, isError=false){
             color:${isError ? '#b91c1c' : '#166534'};
             padding:15px;
             border-radius:12px;
-            font-size:20px;
-            font-weight:bold;
         ">
         ${msg}
         </div>
     `;
 
-    // 🔥 error อยู่ 6 วิ / ปกติ 2 วิ
-    let time = isError ? 6000 : 2000;
-
-    setTimeout(()=>{
-        alertBox.innerHTML = "";
-    }, time);
-}
-function copyResult(){
- if(!lastResult) return;
- navigator.clipboard.writeText(lastResult); 
-showAlert("✅ คัดลอกแล้ว");
- }
-
-function clearData(){
-    allNumbers = [];
-    duplicateCount = 0;
-    lastResult = "";
-    document.getElementById("output").innerHTML = "";
-    document.getElementById("stats").innerHTML = "จำนวน: 0 | ซ้ำ: 0";
+    setTimeout(()=> alertBox.innerHTML="", 3000);
 }
 </script>
 
