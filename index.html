@@ -1,1 +1,204 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Tool Pro MAX (SYNC)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        * { box-sizing: border-box; font-family: 'Prompt', sans-serif; }
 
+        body {
+            margin: 0; padding: 0; min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), 
+                        url('14169.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        .main-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            width: 90%; max-width: 600px; padding: 30px;
+            border-radius: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+
+        h2 { color: #1a2e1a; margin-bottom: 20px; font-size: 26px; }
+
+        #input {
+            width: 100%; padding: 18px; border-radius: 15px;
+            border: 3px solid #ddd; font-size: 24px; text-align: center;
+            margin-bottom: 20px; transition: 0.3s; font-weight: bold;
+        }
+
+        #input:focus { border-color: #22c55e; outline: none; box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); }
+
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+
+        button {
+            padding: 15px; border-radius: 12px; border: none;
+            font-size: 18px; font-weight: 600; cursor: pointer;
+            transition: 0.1s; color: white;
+        }
+
+        button:active { transform: scale(0.95); }
+        .btn-green { background-color: #22c55e; } 
+        .btn-red { background-color: #ef4444; }
+
+        .status-info {
+            background: #f8fafc; padding: 12px; border-radius: 10px;
+            margin-bottom: 15px; display: flex; justify-content: space-around;
+        }
+
+        .display-area {
+            background: white; border: 1px solid #e2e8f0; border-radius: 15px;
+            padding: 20px; min-height: 150px; max-height: 350px;
+            overflow-y: auto; text-align: left; font-size: 19px;
+            line-height: 2; word-break: break-all;
+        }
+
+        /* ตกแต่งตัวเลข */
+        .last-item { background: #fef08a; padding: 2px 8px; border-radius: 6px; font-weight: bold; border: 2px solid #eab308; }
+        .is-duplicate { color: #dc2626; font-weight: bold; text-decoration: underline; }
+
+        /* แจ้งเตือนกลางจอ (ตัวใหม่) */
+        #custom-alert {
+            display: none; position: fixed;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            padding: 30px 50px; border-radius: 20px; z-index: 10000;
+            font-size: 26px; text-align: center; font-weight: bold;
+            box-shadow: 0 0 50px rgba(0,0,0,0.6);
+            animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            color: white; min-width: 300px;
+        }
+
+        /* สไตล์สีแจ้งเตือน */
+        .alert-normal { background: rgba(0, 0, 0, 0.85); }
+        .alert-error { background: rgba(220, 38, 38, 0.95); border: 4px solid #fff; } /* สีแดงสำหรับเลขซ้ำ */
+
+        @keyframes bounceIn { from { opacity: 0; transform: translate(-50%, -70%) scale(0.8); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+    </style>
+</head>
+<body>
+
+<div id="custom-alert"></div>
+
+<div class="main-card">
+    <h2>🌲 Number Sync (Pro MAX)</h2>
+
+    <input type="text" id="input" placeholder="ยิงบาร์โค้ดเลย..." autocomplete="off">
+
+    <div class="btn-row">
+        <button class="btn-green" onclick="copyAll()">📋 คัดลอกทั้งหมด</button>
+        <button class="btn-red" onclick="resetDB()">♻️ ล้างข้อมูล</button>
+    </div>
+
+    <div class="status-info">
+        <span>รายการ: <b id="stat-total">0</b></span>
+        <span>พบเลขซ้ำ: <b id="stat-dup" style="color:red">0</b></span>
+    </div>
+
+    <div class="display-area" id="output">รอข้อมูล...</div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAyMBXAGwYUXg-Rj0oM85D0wFLV1HGbbT8",
+        authDomain: "number-tool-ab240.firebaseapp.com",
+        databaseURL: "https://number-tool-ab240-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "number-tool-ab240"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const listRef = ref(db, "numbers");
+
+    let items = [];
+    const inputField = document.getElementById("input");
+
+    document.addEventListener("click", () => inputField.focus());
+    inputField.focus();
+
+    onValue(listRef, (snap) => {
+        const data = snap.val();
+        items = data ? Object.keys(data).sort().map(k => data[k]) : [];
+        updateUI();
+    });
+
+    inputField.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            const val = inputField.value.trim();
+            inputField.value = "";
+            if (!val) return;
+
+            // ตรวจสอบซ้ำ
+            if (items.includes(val)) {
+                popup(`⚠️ เลขซ้ำ!! \n ${val}`, true); // ส่งค่า true เพื่อบอกว่าเป็น Error (สีแดง)
+                return;
+            }
+
+            push(listRef, val);
+        }
+    });
+
+    function updateUI() {
+        const output = document.getElementById("output");
+        const total = document.getElementById("stat-total");
+        const dupCount = document.getElementById("stat-dup");
+
+        if (items.length === 0) {
+            output.innerHTML = "รอรับข้อมูล...";
+            total.innerText = "0"; dupCount.innerText = "0";
+            return;
+        }
+
+        let seen = new Set();
+        let duplicates = new Set();
+        items.forEach(n => seen.has(n) ? duplicates.add(n) : seen.add(n));
+
+        total.innerText = items.length;
+        dupCount.innerText = duplicates.size;
+
+        const lastIdx = items.length - 1;
+        const html = items.map((val, i) => {
+            let cls = "";
+            if (i === lastIdx) cls = "last-item";
+            else if (duplicates.has(val)) cls = "is-duplicate";
+            return `<span class="${cls}">${val}</span>`;
+        }).join(", ");
+
+        output.innerHTML = html;
+        output.scrollTop = output.scrollHeight;
+    }
+
+    // ฟังก์ชันแจ้งเตือน (รับ Parameter isError)
+    function popup(msg, isError = false) {
+        const el = document.getElementById("custom-alert");
+        el.innerText = msg;
+        el.className = isError ? "alert-error" : "alert-normal"; // เปลี่ยนสีตามเงื่อนไข
+        el.style.display = "block";
+        
+        // ถ้าเป็นเลขซ้ำ ให้โชว์ค้างไว้นิดนึง (2.5 วินาที) ถ้าปกติ (1.5 วินาที)
+        setTimeout(() => el.style.display = "none", isError ? 2500 : 1500);
+    }
+
+    window.copyAll = () => {
+        if (items.length === 0) return popup("ไม่มีข้อมูล", true);
+        navigator.clipboard.writeText(items.join(","));
+        popup("✅ คัดลอกสำเร็จ!");
+    };
+
+    window.resetDB = () => {
+        if (confirm("ล้างข้อมูลทั้งหมด?")) {
+            remove(listRef);
+            popup("🧹 ล้างข้อมูลแล้ว");
+        }
+    };
+</script>
+</body>
+</html>
