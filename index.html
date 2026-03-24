@@ -117,6 +117,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const listRef = ref(db, "numbers");
+        const alertRef = ref(db, "alerts");
 
     let items = [];
     const inputField = document.getElementById("input");
@@ -130,6 +131,23 @@
         updateUI();
     });
 
+let lastAlertTs = 0;
+
+onValue(alertRef, (snap) => {
+    const data = snap.val();
+    if (!data) return;
+
+    const alerts = Object.values(data);
+    const last = alerts.sort((a,b)=>b.ts-a.ts)[0];
+
+    if (!last) return;
+    if (last.ts === lastAlertTs) return;
+
+    lastAlertTs = last.ts;
+
+    popup(last.msg, true);
+});
+
     inputField.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
             const val = inputField.value.trim();
@@ -137,10 +155,17 @@
             if (!val) return;
 
             // ตรวจสอบซ้ำ
-            if (items.includes(val)) {
-                popup(`⚠️ เลขซ้ำ!! \n ${val}`, true); // ส่งค่า true เพื่อบอกว่าเป็น Error (สีแดง)
-                return;
-            }
+           if (items.includes(val)) {
+
+    // ส่งแจ้งเตือนเข้า Firebase
+    push(alertRef, {
+        msg: `⚠️ เลขซ้ำ!! ${val}`,
+        ts: Date.now()
+    });
+
+    popup(`⚠️ เลขซ้ำ!! ${val}`, true);
+    return;
+}
 
             push(listRef, val);
         }
