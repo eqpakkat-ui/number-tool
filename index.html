@@ -105,7 +105,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, push, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAyMBXAGwYUXg-Rj0oM85D0wFLV1HGbbT8",
@@ -113,6 +113,108 @@
         databaseURL: "https://number-tool-ab240-default-rtdb.asia-southeast1.firebasedatabase.app",
         projectId: "number-tool-ab240"
     };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // --- ส่วนจัดการ USER ID แยกเครื่องกัน ---
+    let userId = localStorage.getItem("move_shelf_user");
+    if (!userId) {
+        userId = "user_" + Math.random().toString(36).substring(2, 7);
+        localStorage.setItem("move_shelf_user", userId);
+    }
+    
+    // เปลี่ยนหัวข้อให้โชว์ User ID
+    document.querySelector("h2").innerText = `Move Shelf (${userId})`;
+
+    // Path แยกตาม User
+    const userListRef = ref(db, `users/${userId}/numbers`);
+    const userAlertRef = ref(db, `users/${userId}/alerts`);
+
+    let items = [];
+    let isFirstLoad = true;
+    let lastAlertTs = 0;
+
+    const inputField = document.getElementById("input");
+    inputField.focus();
+
+    onValue(userListRef, (snap) => {
+        const data = snap.val();
+        items = data ? Object.values(data) : [];
+        updateUI();
+    });
+
+    const alertQuery = query(userAlertRef, limitToLast(1));
+    onValue(alertQuery, (snap) => {
+        if (isFirstLoad) { isFirstLoad = false; return; }
+        const data = snap.val();
+        if (!data) return;
+        const alertItem = Object.values(data)[0];
+        if (alertItem.ts > lastAlertTs) {
+            lastAlertTs = alertItem.ts;
+            popup(alertItem.msg, true);
+        }
+    });
+
+    inputField.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            const val = inputField.value.trim();
+            inputField.value = "";
+            if (!val) return;
+
+            if (items.includes(val)) {
+                push(userAlertRef, { msg: `⚠️ เลขซ้ำ!! ${val}`, ts: Date.now() });
+                return;
+            }
+            push(userListRef, val);
+        }
+    });
+
+    function updateUI() {
+        const output = document.getElementById("output");
+        const total = document.getElementById("stat-total");
+        const dupCount = document.getElementById("stat-dup");
+        if (items.length === 0) {
+            output.innerHTML = "รอรับข้อมูล...";
+            total.innerText = "0"; dupCount.innerText = "0";
+            return;
+        }
+        total.innerText = items.length;
+        let seen = new Set();
+        let duplicates = new Set();
+        items.forEach(n => seen.has(n) ? duplicates.add(n) : seen.add(n));
+        dupCount.innerText = duplicates.size;
+
+        const html = items.map((val, i) => {
+            let cls = (i === items.length - 1) ? "last-item" : (duplicates.has(val) ? "is-duplicate" : "");
+            return `<span class="${cls}">${val}</span>`;
+        }).join(", ");
+        output.innerHTML = html;
+        output.scrollTop = output.scrollHeight;
+    }
+
+    function popup(msg, isError = false) {
+        const el = document.getElementById("custom-alert");
+        el.innerText = msg;
+        el.className = isError ? "alert-error" : "alert-normal";
+        el.style.display = "block";
+        setTimeout(() => el.style.display = "none", 2000);
+    }
+
+    window.copyAll = () => {
+        if (items.length === 0) return popup("ไม่มีข้อมูล", true);
+        navigator.clipboard.writeText(items.join(","));
+        popup("✅ คัดลอกสำเร็จ!");
+    };
+
+    window.resetDB = () => {
+        if (confirm("ล้างข้อมูลของคุณทั้งหมด?")) {
+            remove(userListRef);
+            remove(userAlertRef);
+            popup("🧹 ล้างข้อมูลแล้ว");
+        }
+    };
+</script>
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
