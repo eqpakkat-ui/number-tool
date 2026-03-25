@@ -16,7 +16,22 @@
                         url('14169.jpg') no-repeat center center fixed;
             background-size: cover;
         }
+       
+  <div style="background:#fff;padding:30px;border-radius:20px;text-align:center;width:300px;">
+    <h3>เลือกผู้ใช้งาน</h3>
 
+    <select id="userDropdown" style="width:100%;padding:10px;font-size:18px;margin-bottom:15px;">
+      <option value="">-- เลือก --</option>
+      <option value="A">User A</option>
+      <option value="B">User B</option>
+      <option value="C">User C</option>
+    </select>
+
+    <button onclick="confirmUser()" style="padding:10px 20px;font-size:18px;background:#22c55e;color:#fff;border:none;border-radius:10px;">
+      เข้าใช้งาน
+    </button>
+  </div>
+</div>
         .main-card {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -104,26 +119,63 @@
 </div>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyAyMBXAGwYUXg-Rj0oM85D0wFLV1HGbbT8",
-        authDomain: "number-tool-ab240.firebaseapp.com",
-        databaseURL: "https://number-tool-ab240-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "number-tool-ab240"
-    };
+const firebaseConfig = {
+    apiKey: "AIzaSyAyMBXAGwYUXg-Rj0oM85D0wFLV1HGbbT8",
+    authDomain: "number-tool-ab240.firebaseapp.com",
+    databaseURL: "https://number-tool-ab240-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "number-tool-ab240"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const listRef = ref(db, "numbers");
-        const alertRef = ref(db, "alerts");
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+    let userId = null;
 
-    let items = [];
-    const inputField = document.getElementById("input");
+// โหลด user ที่เคยเลือก
+const savedUser = localStorage.getItem("selectedUser");
 
-    document.addEventListener("click", () => inputField.focus());
-    inputField.focus();
+let userId = null;
+
+// โหลด user ที่เคยเลือก
+const savedUser = localStorage.getItem("selectedUser");
+
+if (savedUser) {
+    userId = savedUser;
+
+    const userSelect = document.getElementById("user-select");
+    if (userSelect) {
+        userSelect.style.display = "none";
+    }
+}
+
+console.log("USER ID:", userId);
+
+// =======================
+// ✅ 2. แยกข้อมูลตาม user
+// =======================
+let listRef;
+let alertRef;
+
+if (userId) {
+    listRef = ref(db, "numbers/" + userId);
+    alertRef = ref(db, "alerts/" + userId);
+}
+
+
+// =======================
+let items = [];
+const inputField = document.getElementById("input");
+
+document.addEventListener("click", () => inputField.focus());
+inputField.focus();
+
+
+// =======================
+// โหลดข้อมูล
+// =======================
+if (userId) {
 
     onValue(listRef, (snap) => {
         const data = snap.val();
@@ -131,7 +183,29 @@
         updateUI();
     });
 
+    onValue(alertRef, (snap) => {
+        const data = snap.val();
+        if (!data) return;
+
+        const alerts = Object.values(data);
+        const last = alerts.sort((a,b)=>b.ts-a.ts)[0];
+
+        if (!last) return;
+        if (last.ts === lastAlertTs) return;
+
+        lastAlertTs = last.ts;
+
+        popup(last.msg, true);
+    });
+
+}
+
+
+// =======================
+// แจ้งเตือน realtime
+// =======================
 let lastAlertTs = 0;
+let isFirstLoad = true;
 
 onValue(alertRef, (snap) => {
     const data = snap.val();
@@ -141,6 +215,14 @@ onValue(alertRef, (snap) => {
     const last = alerts.sort((a,b)=>b.ts-a.ts)[0];
 
     if (!last) return;
+
+    // กันเด้งตอนเปิดเว็บ
+    if (isFirstLoad) {
+        lastAlertTs = last.ts;
+        isFirstLoad = false;
+        return;
+    }
+
     if (last.ts === lastAlertTs) return;
 
     lastAlertTs = last.ts;
@@ -148,82 +230,93 @@ onValue(alertRef, (snap) => {
     popup(last.msg, true);
 });
 
-    inputField.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            const val = inputField.value.trim();
-            inputField.value = "";
-            if (!val) return;
 
-            // ตรวจสอบซ้ำ
-           if (items.includes(val)) {
+// =======================
+// ยิงข้อมูล
+// =======================
+inputField.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        const val = inputField.value.trim();
+        inputField.value = "";
+        if (!val) return;
 
-    // ส่งแจ้งเตือนเข้า Firebase
-    push(alertRef, {
-        msg: `⚠️ เลขซ้ำ!! ${val}`,
-        ts: Date.now()
-    });
+        if (items.includes(val)) {
 
-    popup(`⚠️ เลขซ้ำ!! ${val}`, true);
-    return;
-}
+            push(alertRef, {
+                msg: `⚠️ เลขซ้ำ!! ${val}`,
+                ts: Date.now()
+            });
 
-            push(listRef, val);
-        }
-    });
-
-    function updateUI() {
-        const output = document.getElementById("output");
-        const total = document.getElementById("stat-total");
-        const dupCount = document.getElementById("stat-dup");
-
-        if (items.length === 0) {
-            output.innerHTML = "รอรับข้อมูล...";
-            total.innerText = "0"; dupCount.innerText = "0";
+            popup(`⚠️ เลขซ้ำ!! ${val}`, true);
             return;
         }
 
-        let seen = new Set();
-        let duplicates = new Set();
-        items.forEach(n => seen.has(n) ? duplicates.add(n) : seen.add(n));
+        push(listRef, val);
+    }
+});
 
-        total.innerText = items.length;
-        dupCount.innerText = duplicates.size;
 
-        const lastIdx = items.length - 1;
-        const html = items.map((val, i) => {
-            let cls = "";
-            if (i === lastIdx) cls = "last-item";
-            else if (duplicates.has(val)) cls = "is-duplicate";
-            return `<span class="${cls}">${val}</span>`;
-        }).join(", ");
+// =======================
+// UI
+// =======================
+function updateUI() {
+    const output = document.getElementById("output");
+    const total = document.getElementById("stat-total");
+    const dupCount = document.getElementById("stat-dup");
 
-        output.innerHTML = html;
-        output.scrollTop = output.scrollHeight;
+    if (items.length === 0) {
+        output.innerHTML = "รอรับข้อมูล...";
+        total.innerText = "0";
+        dupCount.innerText = "0";
+        return;
     }
 
-    // ฟังก์ชันแจ้งเตือน (รับ Parameter isError)
-    function popup(msg, isError = false) {
-        const el = document.getElementById("custom-alert");
-        el.innerText = msg;
-        el.className = isError ? "alert-error" : "alert-normal"; // เปลี่ยนสีตามเงื่อนไข
-        el.style.display = "block";
-        
-        // ถ้าเป็นเลขซ้ำ ให้โชว์ค้างไว้นิดนึง (2.5 วินาที) ถ้าปกติ (1.5 วินาที)
-        setTimeout(() => el.style.display = "none", isError ? 2500 : 1500);
+    let seen = new Set();
+    let duplicates = new Set();
+    items.forEach(n => seen.has(n) ? duplicates.add(n) : seen.add(n));
+
+    total.innerText = items.length;
+    dupCount.innerText = duplicates.size;
+
+    const lastIdx = items.length - 1;
+    const html = items.map((val, i) => {
+        let cls = "";
+        if (i === lastIdx) cls = "last-item";
+        else if (duplicates.has(val)) cls = "is-duplicate";
+        return `<span class="${cls}">${val}</span>`;
+    }).join(", ");
+
+    output.innerHTML = html;
+    output.scrollTop = output.scrollHeight;
+}
+
+
+// =======================
+// popup
+// =======================
+function popup(msg, isError = false) {
+    const el = document.getElementById("custom-alert");
+    el.innerText = msg;
+    el.className = isError ? "alert-error" : "alert-normal";
+    el.style.display = "block";
+
+    setTimeout(() => el.style.display = "none", isError ? 2500 : 1500);
+}
+
+
+// =======================
+window.copyAll = () => {
+    if (items.length === 0) return popup("ไม่มีข้อมูล", true);
+    navigator.clipboard.writeText(items.join(","));
+    popup("✅ คัดลอกสำเร็จ!");
+};
+
+window.resetDB = () => {
+    if (confirm("ล้างข้อมูลทั้งหมด?")) {
+        remove(listRef);
+        popup("🧹 ล้างข้อมูลแล้ว");
     }
-
-    window.copyAll = () => {
-        if (items.length === 0) return popup("ไม่มีข้อมูล", true);
-        navigator.clipboard.writeText(items.join(","));
-        popup("✅ คัดลอกสำเร็จ!");
-    };
-
-    window.resetDB = () => {
-        if (confirm("ล้างข้อมูลทั้งหมด?")) {
-            remove(listRef);
-            popup("🧹 ล้างข้อมูลแล้ว");
-        }
-    };
+};
 </script>
 </body>
 </html>
