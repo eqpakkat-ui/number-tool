@@ -14,7 +14,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #111;
+    background: #000;
 }
 
 .main-card {
@@ -49,23 +49,6 @@ body {
 
 <body>
 
-<!-- ✅ UI เลือก user -->
-<div id="user-select" style="position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;z-index:9999;">
-  <div style="background:#fff;padding:30px;border-radius:20px;text-align:center;width:300px;">
-    <h3>เลือกผู้ใช้งาน</h3>
-
-    <select id="userDropdown" style="width:100%;padding:10px;margin-bottom:15px;">
-      <option value="">-- เลือก --</option>
-      <option value="A">User A</option>
-      <option value="B">User B</option>
-      <option value="C">User C</option>
-    </select>
-
-    <button onclick="confirmUser()">เข้าใช้งาน</button>
-  </div>
-</div>
-
-<!-- ✅ UI หลัก -->
 <div class="main-card">
     <input id="input" placeholder="กรอกเลขแล้วกด Enter" style="width:100%;padding:10px;">
     <div id="output">รอรับข้อมูล...</div>
@@ -77,6 +60,7 @@ body {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+// 🔥 ใส่ config ของคุณ
 const firebaseConfig = {
     apiKey: "AIzaSy...",
     authDomain: "number-tool-ab240.firebaseapp.com",
@@ -88,89 +72,73 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // =======================
-// USER SYSTEM
+// ✅ USER จาก URL
 // =======================
-let userId = null;
+const params = new URLSearchParams(window.location.search);
+let userId = params.get("user");
 
-const savedUser = localStorage.getItem("selectedUser");
-
-if (savedUser) {
-    userId = savedUser;
-
-    const userSelect = document.getElementById("user-select");
-    if (userSelect) userSelect.style.display = "none";
+if (!userId) {
+    userId = "default";
 }
 
-window.confirmUser = () => {
-    const val = document.getElementById("userDropdown").value;
-
-    if (!val) {
-        alert("กรุณาเลือก user");
-        return;
-    }
-
-    localStorage.setItem("selectedUser", val);
-    location.reload();
-};
+console.log("USER:", userId);
 
 // =======================
-// Firebase (เฉพาะตอนมี user)
+// Firebase (แยก user)
 // =======================
-let listRef, alertRef;
+const listRef = ref(db, "numbers/" + userId);
+const alertRef = ref(db, "alerts/" + userId);
+
 let items = [];
 let lastAlertTs = 0;
 
 const inputField = document.getElementById("input");
 
-if (userId) {
+// โหลดข้อมูล
+onValue(listRef, (snap) => {
+    const data = snap.val();
+    items = data ? Object.keys(data).map(k => data[k]) : [];
+    updateUI();
+});
 
-    listRef = ref(db, "numbers/" + userId);
-    alertRef = ref(db, "alerts/" + userId);
+// แจ้งเตือน
+onValue(alertRef, (snap) => {
+    const data = snap.val();
+    if (!data) return;
 
-    onValue(listRef, (snap) => {
-        const data = snap.val();
-        items = data ? Object.keys(data).map(k => data[k]) : [];
-        updateUI();
-    });
+    const alerts = Object.values(data);
+    const last = alerts.sort((a,b)=>b.ts-a.ts)[0];
 
-    onValue(alertRef, (snap) => {
-        const data = snap.val();
-        if (!data) return;
+    if (!last) return;
+    if (last.ts === lastAlertTs) return;
 
-        const alerts = Object.values(data);
-        const last = alerts.sort((a,b)=>b.ts-a.ts)[0];
+    lastAlertTs = last.ts;
+    popup(last.msg, true);
+});
 
-        if (!last) return;
-        if (last.ts === lastAlertTs) return;
+// ยิงข้อมูล
+inputField.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        const val = inputField.value.trim();
+        inputField.value = "";
 
-        lastAlertTs = last.ts;
-        popup(last.msg, true);
-    });
+        if (!val) return;
 
-    inputField.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            const val = inputField.value.trim();
-            inputField.value = "";
+        if (items.includes(val)) {
+            push(alertRef, {
+                msg: `⚠️ เลขซ้ำ ${val}`,
+                ts: Date.now()
+            });
 
-            if (!val) return;
-
-            if (items.includes(val)) {
-                push(alertRef, {
-                    msg: `⚠️ เลขซ้ำ ${val}`,
-                    ts: Date.now()
-                });
-                popup(`⚠️ เลขซ้ำ ${val}`, true);
-                return;
-            }
-
-            push(listRef, val);
+            popup(`⚠️ เลขซ้ำ ${val}`, true);
+            return;
         }
-    });
-}
 
-// =======================
+        push(listRef, val);
+    }
+});
+
 // UI
-// =======================
 function updateUI() {
     const output = document.getElementById("output");
 
@@ -182,6 +150,7 @@ function updateUI() {
     output.innerHTML = items.join(", ");
 }
 
+// popup
 function popup(msg, isError=false) {
     const el = document.getElementById("custom-alert");
     el.innerText = msg;
@@ -190,6 +159,14 @@ function popup(msg, isError=false) {
 
     setTimeout(()=> el.style.display="none", 2000);
 }
+
+// แสดง user มุมจอ (เล็ก ๆ ไม่กระทบ UI)
+document.body.insertAdjacentHTML(
+  "beforeend",
+  `<div style="position:fixed;top:10px;right:10px;color:white;font-size:12px;">
+    USER: ${userId}
+  </div>`
+);
 </script>
 
 </body>
