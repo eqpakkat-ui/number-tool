@@ -116,8 +116,8 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const listRef = ref(db, "numbers");
-        const alertRef = ref(db, "alerts");
+    const listRef = ref(db, "numbers/" + userId);
+    const alertRef = ref(db, "alerts/" + userId);
     let userId = localStorage.getItem("userId");
 
 if (!userId) {
