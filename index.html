@@ -118,7 +118,14 @@
     const db = getDatabase(app);
     const listRef = ref(db, "numbers");
         const alertRef = ref(db, "alerts");
+    let userId = localStorage.getItem("userId");
 
+if (!userId) {
+    userId = "user_" + Math.random().toString(36).substring(2, 8);
+    localStorage.setItem("userId", userId);
+}
+
+console.log("USER ID:", userId);
     let items = [];
     const inputField = document.getElementById("input");
 
