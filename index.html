@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Move Shelf - Fix</title>
+    <title>Move Shelf Sync + Sound</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; font-family: 'Prompt', sans-serif; }
@@ -11,23 +11,10 @@
         .main-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); width: 95%; max-width: 600px; padding: 25px; border-radius: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); text-align: center; }
         h2 { color: #1a2e1a; margin-bottom: 10px; font-size: 26px; }
         
-        /* แถบชื่อผู้ใช้ */
+        /* ปรับปรุงส่วนแสดงชื่อผู้ใช้ */
         #user-info { background: #f1f5f9; padding: 12px; border-radius: 15px; margin-bottom: 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
-        #display-name { color: #15803d; font-size: 18px; font-weight: bold; }
-        
-        /* ปุ่มเปลี่ยนคน - สีเขียวอ่อนตามสั่ง */
-        .btn-change { 
-            background: #4ade80; 
-            color: #064e3b; 
-            border: none; 
-            padding: 8px 18px; 
-            border-radius: 10px; 
-            font-size: 14px; 
-            cursor: pointer; 
-            font-weight: 600; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-            transition: 0.2s;
-        }
+        #display-name { color: #15803d; font-size: 18px; font-weight: bold; word-break: break-word; }
+        .btn-change { background: #4ade80; color: #14532d; border: none; padding: 8px 18px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; transition: 0.2s; }
         .btn-change:hover { background: #22c55e; color: white; }
 
         #input { width: 100%; padding: 18px; border-radius: 15px; border: 3px solid #ddd; font-size: 24px; text-align: center; margin-bottom: 20px; transition: 0.3s; font-weight: bold; }
@@ -45,4 +32,162 @@
 </head>
 <body>
 
-<div id
+<div id="custom-alert"></div>
+
+<div class="main-card">
+    <h2>Move Shelf</h2>
+    <div id="user-info">
+        <span>ผู้ใช้: <b id="display-name">...</b></span> 
+        <button class="btn-change" onclick="changeUser()">🔄 เปลี่ยนคน</button>
+    </div>
+
+    <input type="text" id="input" placeholder="ยิงบาร์โค้ดเลย..." autocomplete="off">
+
+    <div class="btn-row">
+        <button class="action-btn btn-green" onclick="copyAll()">📋 คัดลอก</button>
+        <button class="action-btn btn-red" onclick="resetDB()">♻️ ล้างข้อมูล</button>
+    </div>
+
+    <div class="status-info">
+        <span>รายการ: <b id="stat-total">0</b></span>
+        <span>ซ้ำ: <b id="stat-dup" style="color:red">0</b></span>
+    </div>
+
+    <div class="display-area" id="output">รอข้อมูล...</div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAyMBXAGwYUXg-Rj0oM85D0wFLV1HGbbT8",
+        authDomain: "number-tool-ab240.firebaseapp.com",
+        databaseURL: "https://number-tool-ab240-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "number-tool-ab240"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const playSound = (type) => {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            if (type === 'success') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'error') {
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.3);
+            }
+        } catch(e) { console.log("Audio play failed"); }
+    };
+
+    let userId = localStorage.getItem("move_shelf_user");
+    if (!userId) {
+        userId = prompt("กรุณาใส่ชื่อผู้ใช้งาน (เช่น Boy, Staff01):");
+        if (!userId || userId.trim() === "") userId = "Guest_" + Math.random().toString(36).substring(2, 5);
+        localStorage.setItem("move_shelf_user", userId.trim());
+    }
+    document.getElementById("display-name").innerText = userId;
+
+    const userListRef = ref(db, `users/${userId}/numbers`);
+    const userAlertRef = ref(db, `users/${userId}/alerts`);
+
+    let items = [];
+    let isFirstLoad = true;
+    let lastAlertTs = 0;
+
+    const inputField = document.getElementById("input");
+    document.addEventListener("click", () => inputField.focus());
+    inputField.focus();
+
+    onValue(userListRef, (snap) => {
+        const data = snap.val();
+        const newItems = data ? Object.values(data) : [];
+        if (!isFirstLoad && newItems.length > items.length) playSound('success');
+        items = newItems;
+        updateUI();
+    });
+
+    const alertQuery = query(userAlertRef, limitToLast(1));
+    onValue(alertQuery, (snap) => {
+        if (isFirstLoad) { isFirstLoad = false; return; }
+        const data = snap.val();
+        if (!data) return;
+        const alertItem = Object.values(data)[0];
+        if (alertItem.ts > lastAlertTs) {
+            lastAlertTs = alertItem.ts;
+            playSound('error');
+            popup(alertItem.msg, true);
+        }
+    });
+
+    inputField.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            const val = inputField.value.trim();
+            inputField.value = "";
+            if (!val) return;
+            if (items.includes(val)) {
+                push(userAlertRef, { msg: `⚠️ เลขซ้ำ!! ${val}`, ts: Date.now() });
+                return;
+            }
+            push(userListRef, val);
+        }
+    });
+
+    function updateUI() {
+        const output = document.getElementById("output");
+        const total = document.getElementById("stat-total");
+        const dupCount = document.getElementById("stat-dup");
+        if (items.length === 0) { output.innerHTML = "รอข้อมูล..."; total.innerText = "0"; dupCount.innerText = "0"; return; }
+        total.innerText = items.length;
+        let seen = new Set();
+        let duplicates = new Set();
+        items.forEach(n => seen.has(n) ? duplicates.add(n) : seen.add(n));
+        dupCount.innerText = duplicates.size;
+        const html = items.map((val, i) => {
+            let cls = (i === items.length - 1) ? "last-item" : (duplicates.has(val) ? "is-duplicate" : "");
+            return `<span class="${cls}">${val}</span>`;
+        }).join(", ");
+        output.innerHTML = html;
+        output.scrollTop = output.scrollHeight;
+    }
+
+    function popup(msg, isError = false) {
+        const el = document.getElementById("custom-alert");
+        el.innerText = msg; el.className = isError ? "alert-error" : "alert-normal";
+        el.style.display = "block"; setTimeout(() => el.style.display = "none", 2000);
+    }
+
+    window.copyAll = () => {
+        if (items.length === 0) return popup("ไม่มีข้อมูล", true);
+        navigator.clipboard.writeText(items.join(","));
+        popup("✅ คัดลอกแล้ว!");
+    };
+
+    window.resetDB = () => {
+        if (confirm("ล้างข้อมูลของ " + userId + " ทั้งหมด?")) {
+            remove(userListRef); remove(userAlertRef);
+            popup("🧹 ล้างข้อมูลแล้ว");
+        }
+    };
+
+    window.changeUser = () => {
+        const newName = prompt("กรุณาใส่ชื่อผู้ใช้งานใหม่:");
+        if (newName && newName.trim() !== "") {
+            localStorage.setItem("move_shelf_user", newName.trim());
+            location.reload();
+        }
+    };
+</script>
+</body>
+</html>
