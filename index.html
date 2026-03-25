@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Move Shelf </title>
+    <title>Move Shelf</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
     
     <style>
@@ -59,11 +59,9 @@
             line-height: 2; word-break: break-all;
         }
 
-        /* ตกแต่งตัวเลข */
         .last-item { background: #fef08a; padding: 2px 8px; border-radius: 6px; font-weight: bold; border: 2px solid #eab308; }
         .is-duplicate { color: #dc2626; font-weight: bold; text-decoration: underline; }
 
-        /* แจ้งเตือนกลางจอ (ตัวใหม่) */
         #custom-alert {
             display: none; position: fixed;
             top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -74,9 +72,8 @@
             color: white; min-width: 300px;
         }
 
-        /* สไตล์สีแจ้งเตือน */
         .alert-normal { background: rgba(0, 0, 0, 0.85); }
-        .alert-error { background: rgba(220, 38, 38, 0.95); border: 4px solid #fff; } /* สีแดงสำหรับเลขซ้ำ */
+        .alert-error { background: rgba(220, 38, 38, 0.95); border: 4px solid #fff; }
 
         @keyframes bounceIn { from { opacity: 0; transform: translate(-50%, -70%) scale(0.8); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
     </style>
@@ -117,17 +114,15 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // --- ส่วนจัดการ USER ID แยกเครื่องกัน ---
+    // จัดการ User ID แยกเครื่อง
     let userId = localStorage.getItem("move_shelf_user");
     if (!userId) {
         userId = "user_" + Math.random().toString(36).substring(2, 7);
         localStorage.setItem("move_shelf_user", userId);
     }
     
-    // เปลี่ยนหัวข้อให้โชว์ User ID
     document.querySelector("h2").innerText = `Move Shelf (${userId})`;
 
-    // Path แยกตาม User
     const userListRef = ref(db, `users/${userId}/numbers`);
     const userAlertRef = ref(db, `users/${userId}/alerts`);
 
@@ -136,14 +131,17 @@
     let lastAlertTs = 0;
 
     const inputField = document.getElementById("input");
+    document.addEventListener("click", () => inputField.focus());
     inputField.focus();
 
+    // ดึงข้อมูลรายการ
     onValue(userListRef, (snap) => {
         const data = snap.val();
         items = data ? Object.values(data) : [];
         updateUI();
     });
 
+    // ดึงแจ้งเตือน
     const alertQuery = query(userAlertRef, limitToLast(1));
     onValue(alertQuery, (snap) => {
         if (isFirstLoad) { isFirstLoad = false; return; }
@@ -174,11 +172,13 @@
         const output = document.getElementById("output");
         const total = document.getElementById("stat-total");
         const dupCount = document.getElementById("stat-dup");
+
         if (items.length === 0) {
             output.innerHTML = "รอรับข้อมูล...";
             total.innerText = "0"; dupCount.innerText = "0";
             return;
         }
+
         total.innerText = items.length;
         let seen = new Set();
         let duplicates = new Set();
@@ -216,130 +216,5 @@
     };
 </script>
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const listRef = ref(db, "numbers");
-        const alertRef = ref(db, "alerts");
-    let userId = localStorage.getItem("userId");
-
-if (!userId) {
-    userId = "user_" + Math.random().toString(36).substring(2, 8);
-    localStorage.setItem("userId", userId);
-}
-
-console.log("USER ID:", userId);
-    let items = [];
-    const inputField = document.getElementById("input");
-
-    document.addEventListener("click", () => inputField.focus());
-    inputField.focus();
-
-    onValue(listRef, (snap) => {
-        const data = snap.val();
-        items = data ? Object.keys(data).sort().map(k => data[k]) : [];
-        updateUI();
-    });
-
-let lastAlertTs = 0;
-let isFirstLoad = true;
-
-onValue(alertRef, (snap) => {
-    const data = snap.val();
-    if (!data) return;
-
-    const alerts = Object.values(data);
-    const last = alerts.sort((a,b)=>b.ts-a.ts)[0];
-
-    if (!last) return;
-
-    // ❗ กันเด้งตอนเปิดเว็บครั้งแรก
-    if (isFirstLoad) {
-        lastAlertTs = last.ts;
-        isFirstLoad = false;
-        return;
-    }
-
-    if (last.ts === lastAlertTs) return;
-
-    lastAlertTs = last.ts;
-
-    popup(last.msg, true);
-});
-
-    inputField.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            const val = inputField.value.trim();
-            inputField.value = "";
-            if (!val) return;
-
-            // ตรวจสอบซ้ำ
-           if (items.includes(val)) {
-
-    // ส่งแจ้งเตือนเข้า Firebase
-    push(alertRef, {
-        msg: `⚠️ เลขซ้ำ!! ${val}`,
-        ts: Date.now()
-    });
-
-    popup(`⚠️ เลขซ้ำ!! ${val}`, true);
-    return;
-}
-
-            push(listRef, val);
-        }
-    });
-
-    function updateUI() {
-        const output = document.getElementById("output");
-        const total = document.getElementById("stat-total");
-        const dupCount = document.getElementById("stat-dup");
-
-        if (items.length === 0) {
-            output.innerHTML = "รอรับข้อมูล...";
-            total.innerText = "0"; dupCount.innerText = "0";
-            return;
-        }
-
-        let seen = new Set();
-        let duplicates = new Set();
-        items.forEach(n => seen.has(n) ? duplicates.add(n) : seen.add(n));
-
-        total.innerText = items.length;
-        dupCount.innerText = duplicates.size;
-
-        const lastIdx = items.length - 1;
-        const html = items.map((val, i) => {
-            let cls = "";
-            if (i === lastIdx) cls = "last-item";
-            else if (duplicates.has(val)) cls = "is-duplicate";
-            return `<span class="${cls}">${val}</span>`;
-        }).join(", ");
-
-        output.innerHTML = html;
-        output.scrollTop = output.scrollHeight;
-    }
-
-    // ฟังก์ชันแจ้งเตือน (รับ Parameter isError)
-    function popup(msg, isError = false) {
-        const el = document.getElementById("custom-alert");
-        el.innerText = msg;
-        el.className = isError ? "alert-error" : "alert-normal"; // เปลี่ยนสีตามเงื่อนไข
-        el.style.display = "block";
-        
-        // ถ้าเป็นเลขซ้ำ ให้โชว์ค้างไว้นิดนึง (2.5 วินาที) ถ้าปกติ (1.5 วินาที)
-        setTimeout(() => el.style.display = "none", isError ? 2500 : 1500);
-    }
-
-    window.copyAll = () => {
-        if (items.length === 0) return popup("ไม่มีข้อมูล", true);
-        navigator.clipboard.writeText(items.join(","));
-        popup("✅ คัดลอกสำเร็จ!");
-    };
-
-    window.resetDB = () => {
-        if (confirm("ล้างข้อมูลทั้งหมด?")) {
-            remove(listRef);
-            popup("🧹 ล้างข้อมูลแล้ว");
-        }
-    };
-</script>
+</body>
+</html>
