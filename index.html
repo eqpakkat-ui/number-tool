@@ -16,7 +16,21 @@
                         url('14169.jpg') no-repeat center center fixed;
             background-size: cover;
         }
+       
+    <h3>เลือกผู้ใช้งาน</h3>
 
+    <select id="userDropdown" style="width:100%;padding:10px;font-size:18px;margin-bottom:15px;">
+      <option value="">-- เลือก --</option>
+      <option value="A">User A</option>
+      <option value="B">User B</option>
+      <option value="C">User C</option>
+    </select>
+
+    <button onclick="confirmUser()" style="padding:10px 20px;font-size:18px;background:#22c55e;color:#fff;border:none;border-radius:10px;">
+      เข้าใช้งาน
+    </button>
+  </div>
+</div>
         .main-card {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -116,26 +130,37 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+    let userId = null;
 
+// โหลด user ที่เคยเลือก
+const savedUser = localStorage.getItem("selectedUser");
 
-// =======================
-// ✅ 1. สร้าง userId ก่อน (สำคัญสุด)
-// =======================
-let userId = localStorage.getItem("userId");
+let userId = null;
 
-if (!userId) {
-    userId = "user_" + Math.random().toString(36).substring(2, 8);
-    localStorage.setItem("userId", userId);
+// โหลด user ที่เคยเลือก
+const savedUser = localStorage.getItem("selectedUser");
+
+if (savedUser) {
+    userId = savedUser;
+
+    const userSelect = document.getElementById("user-select");
+    if (userSelect) {
+        userSelect.style.display = "none";
+    }
 }
 
 console.log("USER ID:", userId);
 
-
 // =======================
 // ✅ 2. แยกข้อมูลตาม user
 // =======================
-const listRef = ref(db, "numbers/" + userId);
-const alertRef = ref(db, "alerts/" + userId);
+let listRef;
+let alertRef;
+
+if (userId) {
+    listRef = ref(db, "numbers/" + userId);
+    alertRef = ref(db, "alerts/" + userId);
+}
 
 
 // =======================
@@ -149,11 +174,30 @@ inputField.focus();
 // =======================
 // โหลดข้อมูล
 // =======================
-onValue(listRef, (snap) => {
-    const data = snap.val();
-    items = data ? Object.keys(data).sort().map(k => data[k]) : [];
-    updateUI();
-});
+if (userId) {
+
+    onValue(listRef, (snap) => {
+        const data = snap.val();
+        items = data ? Object.keys(data).sort().map(k => data[k]) : [];
+        updateUI();
+    });
+
+    onValue(alertRef, (snap) => {
+        const data = snap.val();
+        if (!data) return;
+
+        const alerts = Object.values(data);
+        const last = alerts.sort((a,b)=>b.ts-a.ts)[0];
+
+        if (!last) return;
+        if (last.ts === lastAlertTs) return;
+
+        lastAlertTs = last.ts;
+
+        popup(last.msg, true);
+    });
+
+}
 
 
 // =======================
