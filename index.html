@@ -3,16 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Move Shelf Sync</title>
+    <title>Move Shelf Sync + Sound</title>
+    
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3063/3063822.png">
+    
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; font-family: 'Prompt', sans-serif; }
         body { margin: 0; padding: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('14169.jpg') no-repeat center center fixed; background-size: cover; }
         .main-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); width: 95%; max-width: 600px; padding: 25px; border-radius: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); text-align: center; }
         
+        /* แถบชื่อผู้ใช้ */
         #user-info { background: #f1f5f9; padding: 12px; border-radius: 15px; margin-bottom: 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
-        #display-name { color: #15803d; font-size: 18px; font-weight: bold; }
-        .btn-change { background: #4ade80; color: #064e3b; border: none; padding: 8px 18px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        #display-name { color: #15803d; font-size: 18px; font-weight: bold; word-break: break-word; }
+        .btn-change { background: #4ade80; color: #064e3b; border: none; padding: 8px 18px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; transition: 0.2s; }
+        .btn-change:hover { background: #22c55e; color: white; }
 
         #input { width: 100%; padding: 18px; border-radius: 15px; border: 3px solid #ddd; font-size: 24px; text-align: center; margin-bottom: 20px; transition: 0.3s; font-weight: bold; }
         #input:focus { border-color: #22c55e; outline: none; }
@@ -21,10 +26,10 @@
         button.action-btn { padding: 15px; border-radius: 12px; border: none; font-size: 18px; font-weight: 600; cursor: pointer; color: white; }
         .btn-green { background-color: #22c55e; } .btn-red { background-color: #ef4444; }
 
-        /* ปรับปรุงส่วนรายการให้ใหญ่ขึ้น */
+        /* ✅ ปรับปรุงส่วนรายการให้ใหญ่ขึ้น และลบ 'ซ้ำ' ออก */
         .status-info { background: #f8fafc; padding: 15px; border-radius: 15px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; border: 1px solid #e2e8f0; }
         .status-label { font-size: 20px; font-weight: bold; color: #64748b; }
-        #stat-total { font-size: 36px; color: #22c55e; margin-left: 15px; }
+        #stat-total { font-size: 38px; color: #22c55e; margin-left: 15px; }
 
         .display-area { background: white; border: 1px solid #e2e8f0; border-radius: 15px; padding: 20px; min-height: 150px; max-height: 300px; overflow-y: auto; text-align: left; font-size: 20px; line-height: 2; }
         .last-item { background: #fef08a; padding: 2px 8px; border-radius: 6px; font-weight: bold; border: 2px solid #eab308; }
@@ -52,7 +57,7 @@
     </div>
 
     <div class="status-info">
-        <span class="status-label">จำนวนรายการ: <b id="stat-total">0</b></span>
+        <span class="status-label">รายการทั้งหมด: <b id="stat-total">0</b></span>
     </div>
 
     <div class="display-area" id="output">รอข้อมูล...</div>
