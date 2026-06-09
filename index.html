@@ -267,9 +267,9 @@
         if (alertItem.ts > lastAlertTs) {
             lastAlertTs = alertItem.ts;
             
-            let speechText = "อ๊ะอ๊า! เลขนี้สแกนซ้ำนะจ๊ะ";
+            let speechText = "เลขนี้สแกนซ้ำนะจ๊ะ";
             if (alertItem.msg.includes("รูปแบบโค้ดไม่ถูกต้อง")) {
-                speechText = "อุ๊ยตาย! รหัสนี้ไม่ใช่ตัวเลขนะจ๊ะ";
+                speechText = "โค้ดผิด!  ตรวจสอบโค้ดด้วย จ๊ะ";
             }
             
             playSound('funny-error', speechText); 
