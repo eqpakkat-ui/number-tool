@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Move Shelf Sync + Sound (Fast Version)</title>
+    <title>Move Shelf Sync + Sound (Multi-Screen Sync)</title>
     
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3063/3063822.png">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
@@ -87,7 +87,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, push, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAyMBXAGwYUXg-Rj0oM85D0wFLV1HGbbT8",
@@ -107,10 +107,10 @@
     const totalCountLabel = document.getElementById("stat-total");
     const customAlert = document.getElementById("custom-alert");
 
-    // ฟังก์ชันส่งเสียงทันทีแบบ Realtime (ไม่ดีเลย์)
+    // ระบบเสียงพูดแบบรีลไทม์
     const playSoundImmediate = (speechText) => {
         if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel(); // ตัดบทเสียงเก่าทันที
+            window.speechSynthesis.cancel(); 
             currentUtterance = new SpeechSynthesisUtterance(speechText);
             currentUtterance.lang = 'th-TH';
             currentUtterance.rate = 1.1;
@@ -140,9 +140,12 @@
     document.getElementById("display-name").innerText = userId;
 
     const userListRef = ref(db, `users/${userId}/numbers`);
+    const userAlertRef = ref(db, `users/${userId}/alerts`);
 
     let items = [];
     let itemsValuesOnly = []; 
+    let isFirstLoad = true;
+    let lastAlertTs = 0;
     let alertTimeout;
 
     document.addEventListener("click", (e) => {
@@ -169,10 +172,12 @@
     document.getElementById("reset-btn").onclick = () => {
         if (confirm("ต้องการล้างข้อมูลในกระดานนี้ทั้งหมดใช่ไหม?")) {
             remove(userListRef); 
+            remove(userAlertRef);
             popup("🧹 ล้างข้อมูลสะอาดเอี่ยม!");
         }
     };
 
+    // ติดตามรายการบาร์โค้ด
     onValue(userListRef, (snap) => {
         const data = snap.val();
         items = [];
@@ -186,43 +191,68 @@
         updateUI();
     });
 
-    // ส่วนประมวลผลการสแกน (เพิ่มเงื่อนไขใหม่และยิงเสียงทันที)
+    // 🟢 ระบบดักฟังแจ้งเตือนเพื่อซิงก์ข้ามหน้าจอ (คอมพิวเตอร์จะเด้งตรงนี้)
+    const alertQuery = query(userAlertRef, limitToLast(1));
+    onValue(alertQuery, (snap) => {
+        if (isFirstLoad) { isFirstLoad = false; return; }
+        const data = snap.val();
+        if (!data) return;
+        const alertItem = Object.values(data)[0];
+        
+        // ตรวจสอบว่าเป็นแจ้งเตือนใหม่ และยังไม่ได้แสดงบนเครื่องนี้
+        if (alertItem.ts > lastAlertTs) {
+            lastAlertTs = alertItem.ts;
+            
+            // สั่งสั่นสะเทือนกล่องกรอกข้อมูล (กรณีหน้าจอนั้นเปิดกล่องอินพุตอยู่)
+            triggerInputError();
+            
+            // เล่นเสียงเตือน และแสดงป๊อปอัพสีแดงพร้อมกันทุกจอ
+            playSoundImmediate(alertItem.speech); 
+            popup(alertItem.msg, true);
+        }
+    });
+
+    // ระบบประมวลผลเมื่อมีการกด Enter สแกนข้อมูล
     inputField.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
             const val = inputField.value.trim();
             inputField.value = "";
             if (!val) return;
 
-            // 1. ตรวจสอบว่ามีตัวอักษรภาษาอังกฤษปนมาไหม หรือไม่ใช่ตัวเลขล้วน
+            const now = Date.now();
+
+            // 1. ตรวจสอบว่ามีตัวอักษรภาษาอังกฤษปนมาไหม
             if (!/^\d+$/.test(val)) {
-                triggerInputError();
                 const msgText = `🚨 โค้ดผิด! มีตัวอักษรปน\nตรวจสอบโค้ดด้วย: ${val}`;
-                playSoundImmediate("โค้ดผิด! ตรวจสอบโค้ดด้วย จ๊ะ");
-                popup(msgText, true);
+                const speechText = "โค้ดผิด! ตรวจสอบโค้ดด้วย จ๊ะ";
+                
+                lastAlertTs = now; // ล็อกไม่ให้หน้าจอนี้เด้งซ้ำซ้อน
+                push(userAlertRef, { msg: msgText, speech: speechText, ts: now }); // ส่งขึ้นคลาวด์ให้คอมเด้งตาม
                 return;
             }
 
             // 2. ตรวจสอบเงื่อนไขเลข 0 นำหน้าต้องมีตั้งแต่ 5 ตัวขึ้นไป
-            // หาจำนวนเลข 0 ที่อยู่หน้าสุด เช่น "00008" จะได้ค่าเป็น 4 ตัว
             const leadingZerosCount = val.match(/^0*/)[0].length;
             if (leadingZerosCount < 5) {
-                triggerInputError();
                 const msgText = `🚨 โค้ดแปลก! เลข 0 นำหน้าไม่ถึง 5 หลัก\nโค้ดที่เจอ: ${val}`;
-                playSoundImmediate("โค้ดผิด! ตรวจสอบโค้ดด้วย จ๊ะ");
-                popup(msgText, true);
+                const speechText = "โค้ดผิด! ตรวจสอบโค้ดด้วย จ๊ะ";
+                
+                lastAlertTs = now;
+                push(userAlertRef, { msg: msgText, speech: speechText, ts: now });
                 return;
             }
             
             // 3. ตรวจสอบเลขซ้ำ
             if (itemsValuesOnly.includes(val)) {
-                triggerInputError();
                 const msgText = `🚨 เลขซ้ำจ้า\n${val}`;
-                playSoundImmediate("เลขนี้สแกนซ้ำนะจ๊ะ");
-                popup(msgText, true);
+                const speechText = "เลขนี้สแกนซ้ำนะจ๊ะ";
+
+                lastAlertTs = now;
+                push(userAlertRef, { msg: msgText, speech: speechText, ts: now });
                 return;
             }
 
-            // หากผ่านทุกเงื่อนไข -> บันทึกสำเร็จ
+            // หากผ่านทุกเงื่อนไข บันทึกรหัสสำเร็จลงฐานข้อมูล
             playSuccessBeep(); 
             push(userListRef, val);
         }
