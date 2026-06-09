@@ -98,7 +98,11 @@
             border: 2px solid rgba(255,255,255,0.2); white-space: pre-line; 
         }
         .alert-animated { animation: alertDrop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        .alert-normal { background: linear-gradient(135deg, #1e293b, #0f172a); } 
+        
+        /* ป๊อปอัพสีเขียว (สำหรับคัดลอก/ล้างข้อมูลสำเร็จ) */
+        .alert-normal { background: linear-gradient(135deg, #22c55e, #15803d); text-shadow: 1px 1px 2px rgba(0,0,0,0.2); } 
+        
+        /* ป๊อปอัพสีแดง (สำหรับตรวจจับค่าผิดพลาด) */
         .alert-error { background: linear-gradient(135deg, #dc2626, #991b1b); text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
         
         .empty-state { width: 100%; text-align: center; color: #94a3b8; font-size: 18px; padding-top: 50px; font-style: italic; }
@@ -144,22 +148,23 @@
     const db = getDatabase(app);
 
     let audioCtx;
+    let currentUtterance = null; 
+    
     const inputField = document.getElementById("input");
     const outputField = document.getElementById("output");
     const totalCountLabel = document.getElementById("stat-total");
     const customAlert = document.getElementById("custom-alert");
 
-    // ฟังก์ชันจัดการเสียงแจ้งเตือน
     const playSound = (type, customSpeechText) => {
         try {
             if (type === 'funny-error') {
                 if ('speechSynthesis' in window) {
                     window.speechSynthesis.cancel();
-                    const msg = new SpeechSynthesisUtterance(customSpeechText || "อ๊ะอ๊า! เลขนี้สแกนซ้ำนะจ๊ะ");
-                    msg.lang = 'th-TH';
-                    msg.rate = 1.1;
-                    msg.pitch = 1.8;
-                    window.speechSynthesis.speak(msg);
+                    currentUtterance = new SpeechSynthesisUtterance(customSpeechText || "อ๊ะอ๊า! เลขนี้สแกนซ้ำนะจ๊ะ");
+                    currentUtterance.lang = 'th-TH';
+                    currentUtterance.rate = 1.1;
+                    currentUtterance.pitch = 1.8;
+                    window.speechSynthesis.speak(currentUtterance);
                     return; 
                 }
             }
@@ -193,7 +198,6 @@
         }
     };
 
-    // จัดการข้อมูล ID ผู้ใช้งาน
     let userId = localStorage.getItem("move_shelf_user");
     if (!userId) {
         userId = "Guest_" + Math.random().toString(36).substring(2, 5);
@@ -208,10 +212,8 @@
     let itemsValuesOnly = []; 
     let isFirstLoad = true;
     let lastAlertTs = 0;
-    let previousCount = 0;
     let alertTimeout;
 
-    // ล็อคโฟกัสที่กล่องสแกน
     document.addEventListener("click", (e) => {
         if(e.target.tagName !== 'BUTTON' && !e.target.classList.contains('delete-btn')) {
             inputField.focus();
@@ -219,7 +221,6 @@
     });
     inputField.focus();
 
-    // ปุ่มเปลี่ยนชื่อผู้ใช้งาน
     document.getElementById("change-btn").onclick = () => {
         let name = prompt("กรุณาใส่ชื่อผู้ใช้งาน:");
         if (name && name.trim() !== "") {
@@ -228,14 +229,12 @@
         }
     };
 
-    // ปุ่มคัดลอกข้อมูลเป็น CSV ลิสต์
     document.getElementById("copy-btn").onclick = () => {
         if (items.length === 0) return popup("ไม่มีข้อมูล", true);
         navigator.clipboard.writeText(itemsValuesOnly.join(","));
-        popup("✅ คัดลอกแล้ว!");
+        popup("📋 คัดลอกสำเร็จ!");
     };
 
-    // ปุ่มรีเซ็ตข้อมูลทั้งหมด
     document.getElementById("reset-btn").onclick = () => {
         if (confirm("ต้องการล้างข้อมูลในกระดานนี้ทั้งหมดใช่ไหม?")) {
             remove(userListRef); 
@@ -244,7 +243,6 @@
         }
     };
 
-    // ติดตามข้อมูลจาก Firebase Database
     onValue(userListRef, (snap) => {
         const data = snap.val();
         items = [];
@@ -256,26 +254,22 @@
                 itemsValuesOnly.push(val);
             });
         }
-        
-        if (!isFirstLoad && items.length > previousCount) playSound('success');
-        previousCount = items.length;
         updateUI();
     });
 
-    // ดึง Alert ล่าสุด (กรณีใช้หลายหน้าต่างพร้อมกัน)
     const alertQuery = query(userAlertRef, limitToLast(1));
     onValue(alertQuery, (snap) => {
         if (isFirstLoad) { isFirstLoad = false; return; }
         const data = snap.val();
         if (!data) return;
         const alertItem = Object.values(data)[0];
+        
         if (alertItem.ts > lastAlertTs) {
             lastAlertTs = alertItem.ts;
             
-            // เลือกเสียงพูดให้ตรงกับเงื่อนไขการผิดพลาด
             let speechText = "อ๊ะอ๊า! เลขนี้สแกนซ้ำนะจ๊ะ";
             if (alertItem.msg.includes("รูปแบบโค้ดไม่ถูกต้อง")) {
-                speechText = "โค้ดผิด!  ตรวจสอบโค้ดด้วยจ๊ะ";
+                speechText = "อุ๊ยตาย! รหัสนี้ไม่ใช่ตัวเลขนะจ๊ะ";
             }
             
             playSound('funny-error', speechText); 
@@ -283,45 +277,53 @@
         }
     });
 
-    // การยิงบาร์โค้ด/กด Enter
     inputField.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
             const val = inputField.value.trim();
             inputField.value = "";
             if (!val) return;
             
-            // 1. ตรวจสอบว่ามีเฉพาะตัวเลขเท่านั้นหรือไม่ (ถ้ามีตัวอักษรปนมาจะเข้าเงื่อนไขนี้ทันที)
+            const now = Date.now();
+
             if (!/^\d+$/.test(val)) {
                 inputField.classList.remove("input-error");
                 void inputField.offsetWidth; 
                 inputField.classList.add("input-error");
-                
-                setTimeout(() => {
-                    inputField.classList.remove("input-error");
-                }, 400);
+                setTimeout(() => inputField.classList.remove("input-error"), 400);
 
-                push(userAlertRef, { msg: `🚨 รูปแบบโค้ดไม่ถูกต้อง!\n(ต้องเป็นตัวเลขล้วนเท่านั้น)\nโค้ดที่เจอ: ${val}`, ts: Date.now() });
+                const msgText = `🚨 รูปแบบโค้ดไม่ถูกต้อง!: ${val}`;
+                const speechText = "โค้ดผิด!  ตรวจสอบโค้ดด้วย จ๊ะ";
+                
+                lastAlertTs = now + 2000; 
+                playSound('funny-error', speechText);
+                popup(msgText, true);
+
+                push(userAlertRef, { msg: msgText, ts: now });
                 return;
             }
             
-            // 2. ตรวจสอบเลขซ้ำ
             if (itemsValuesOnly.includes(val)) {
                 inputField.classList.remove("input-error");
                 void inputField.offsetWidth; 
                 inputField.classList.add("input-error");
-                
-                setTimeout(() => {
-                    inputField.classList.remove("input-error");
-                }, 400);
+                setTimeout(() => inputField.classList.remove("input-error"), 400);
 
-                push(userAlertRef, { msg: `🚨 แอ๊ดๆ! เลขซ้ำจ้า\n${val}`, ts: Date.now() });
+                const msgText = `🚨  เลขซ้ำจ้า\n${val}`;
+                const speechText = "เลขนี้สแกนซ้ำนะจ๊ะ";
+
+                lastAlertTs = now + 2000; 
+                playSound('funny-error', speechText);
+                popup(msgText, true);
+
+                push(userAlertRef, { msg: msgText, ts: now });
                 return;
             }
+
+            playSound('success'); 
             push(userListRef, val);
         }
     });
 
-    // อัปเดตการแสดงผลหน้า UI
     function updateUI() {
         if (items.length === 0) { 
             outputField.innerHTML = '<div class="empty-state">รอสแกนข้อมูล...</div>'; 
@@ -355,7 +357,6 @@
         outputField.scrollTop = outputField.scrollHeight; 
     }
 
-    // จัดการแสดงกล่อง Popup Alert
     function popup(msg, isError = false) {
         clearTimeout(alertTimeout);
         customAlert.innerText = msg; 
