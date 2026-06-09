@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Move Shelf Sync + Sound</title>
+    <title>Move Shelf Sync + Sound (Fast Version)</title>
     
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3063/3063822.png">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
@@ -13,18 +13,14 @@
         body { margin: 0; padding: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('14169.jpg') no-repeat center center fixed; background-size: cover; }
         .main-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px); width: 95%; max-width: 600px; padding: 30px 25px; border-radius: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); text-align: center; border: 2px solid rgba(255,255,255,0.5); }
         
-        /* แถบชื่อผู้ใช้ */
         #user-info { background: linear-gradient(135deg, #f1f5f9, #e2e8f0); padding: 12px; border-radius: 15px; margin-bottom: 25px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; box-shadow: inset 0 2px 4px rgba(255,255,255,0.8), 0 2px 5px rgba(0,0,0,0.05); }
         #display-name { color: #0f766e; font-size: 18px; font-weight: bold; word-break: break-word; text-shadow: 1px 1px 0px rgba(255,255,255,0.8); }
         .btn-change { background: linear-gradient(135deg, #4ade80, #22c55e); color: white; border: none; padding: 8px 18px; border-radius: 12px; font-size: 14px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3); white-space: nowrap; transition: 0.2s; text-shadow: 1px 1px 1px rgba(0,0,0,0.2); }
         .btn-change:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(34, 197, 94, 0.4); }
-        .btn-change:active { transform: translateY(1px); }
 
-        /* กล่อง Input */
         #input { width: 100%; padding: 20px; border-radius: 18px; border: 3px solid #cbd5e1; font-size: 24px; text-align: center; margin-bottom: 20px; transition: all 0.3s; font-weight: bold; background: #f8fafc; color: #1e293b; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); }
-        #input:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), inset 0 2px 5px rgba(0,0,0,0.05); background: white; }
+        #input:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2); background: white; }
         
-        /* Animation ตอนสแกนผิด */
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             20%, 60% { transform: translateX(-10px); }
@@ -33,78 +29,34 @@
         .input-error { animation: shake 0.4s ease-in-out; border-color: #ef4444 !important; background-color: #fef2f2 !important; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4) !important; color: #ef4444 !important; }
 
         .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
-        button.action-btn { padding: 15px; border-radius: 15px; border: none; font-size: 18px; font-weight: 600; cursor: pointer; color: white; transition: 0.2s; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-        button.action-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.2); }
-        button.action-btn:active { transform: translateY(1px); }
+        button.action-btn { padding: 15px; border-radius: 15px; border: none; font-size: 18px; font-weight: 600; cursor: pointer; color: white; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+        button.action-btn:hover { transform: translateY(-3px); }
         .btn-green { background: linear-gradient(135deg, #22c55e, #16a34a); } 
         .btn-red { background: linear-gradient(135deg, #ef4444, #dc2626); }
 
-        .status-info { background: linear-gradient(to right, #f8fafc, #f1f5f9); padding: 15px; border-radius: 15px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; border: 1px solid #e2e8f0; box-shadow: inset 0 2px 4px rgba(255,255,255,1); }
+        .status-info { background: linear-gradient(to right, #f8fafc, #f1f5f9); padding: 15px; border-radius: 15px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; border: 1px solid #e2e8f0; }
         .status-label { font-size: 20px; font-weight: bold; color: #475569; }
-        #stat-total { font-size: 42px; color: #3b82f6; margin-left: 15px; text-shadow: 2px 2px 0px rgba(59, 130, 246, 0.2); }
+        #stat-total { font-size: 42px; color: #3b82f6; margin-left: 15px; }
 
-        /* รายการแสดงผลแบบ Tag */
-        .display-area { 
-            background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 20px; 
-            padding: 20px; min-height: 180px; max-height: 320px; overflow-y: auto; 
-            display: flex; flex-wrap: wrap; gap: 12px; align-content: flex-start;
-            box-shadow: inset 0 4px 6px rgba(0,0,0,0.05);
-        }
+        .display-area { background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 20px; padding: 20px; min-height: 180px; max-height: 320px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 12px; align-content: flex-start; }
         
-        /* Animation ตอน Tag ปรากฏ */
         @keyframes popIn {
             0% { transform: scale(0.5); opacity: 0; }
-            70% { transform: scale(1.1); }
             100% { transform: scale(1); opacity: 1; }
         }
+        .barcode-tag { display: inline-flex; align-items: center; background: linear-gradient(135deg, #ffffff, #f1f5f9); border: 1px solid #cbd5e1; border-radius: 25px; padding: 8px 16px; font-size: 16px; color: #334155; animation: popIn 0.3s forwards; }
+        .barcode-tag.latest-added { background: linear-gradient(135deg, #fef08a, #facc15); border-color: #eab308; font-weight: bold; color: #713f12; box-shadow: 0 0 15px rgba(250, 204, 21, 0.6); }
 
-        .barcode-tag {
-            display: inline-flex; align-items: center; 
-            background: linear-gradient(135deg, #ffffff, #f1f5f9);
-            border: 1px solid #cbd5e1; border-radius: 25px; padding: 8px 16px;
-            font-size: 16px; color: #334155; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            transition: all 0.2s;
-        }
-        .barcode-tag:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        
-        /* ตัวล่าสุดเด่นๆ */
-        .barcode-tag.latest-added {
-            background: linear-gradient(135deg, #fef08a, #facc15); 
-            border-color: #eab308; font-weight: bold; color: #713f12;
-            box-shadow: 0 0 15px rgba(250, 204, 21, 0.6);
-        }
+        .delete-btn { background: rgba(255,255,255,0.5); border: none; margin-left: 10px; color: #ef4444; cursor: pointer; font-weight: bold; font-size: 18px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
 
-        .delete-btn {
-            background: rgba(255,255,255,0.5); border: none; margin-left: 10px; color: #ef4444;
-            cursor: pointer; font-weight: bold; font-size: 18px; padding: 0; width: 24px; height: 24px;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 50%; transition: 0.2s;
-        }
-        .delete-btn:hover { color: white; background-color: #ef4444; transform: rotate(90deg); }
-        .latest-added .delete-btn { color: #b45309; background: rgba(255,255,255,0.4); }
-        .latest-added .delete-btn:hover { background-color: #b45309; color: white; }
-
-        /* Animation เด้ง Alert */
         @keyframes alertDrop {
             0% { top: -10%; opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
             100% { top: 50%; opacity: 1; transform: translate(-50%, -50%) scale(1); }
         }
-        #custom-alert { 
-            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            padding: 30px; border-radius: 20px; z-index: 10000; font-size: 26px; text-align: center; 
-            font-weight: bold; color: white; min-width: 300px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
-            border: 2px solid rgba(255,255,255,0.2); white-space: pre-line; 
-        }
+        #custom-alert { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 30px; border-radius: 20px; z-index: 10000; font-size: 26px; text-align: center; font-weight: bold; color: white; min-width: 300px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.2); white-space: pre-line; }
         .alert-animated { animation: alertDrop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        
-        /* ป๊อปอัพสีเขียว (สำหรับคัดลอก/ล้างข้อมูลสำเร็จ) */
-        .alert-normal { background: linear-gradient(135deg, #22c55e, #15803d); text-shadow: 1px 1px 2px rgba(0,0,0,0.2); } 
-        
-        /* ป๊อปอัพสีแดง (สำหรับตรวจจับค่าผิดพลาด) */
-        .alert-error { background: linear-gradient(135deg, #dc2626, #991b1b); text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
-        
+        .alert-normal { background: linear-gradient(135deg, #22c55e, #15803d); } 
+        .alert-error { background: linear-gradient(135deg, #dc2626, #991b1b); }
         .empty-state { width: 100%; text-align: center; color: #94a3b8; font-size: 18px; padding-top: 50px; font-style: italic; }
     </style>
 </head>
@@ -113,7 +65,7 @@
 <div id="custom-alert"></div>
 
 <div class="main-card">
-    <h2 style="margin-top:0; color: #1e293b; font-size: 32px; text-shadow: 1px 1px 0px white;">📦 Move Shelf</h2>
+    <h2 style="margin-top:0; color: #1e293b; font-size: 32px;">📦 Move Shelf</h2>
     <div id="user-info">
         <span>ผู้ใช้: <b id="display-name">...</b></span> 
         <button id="change-btn" class="btn-change">🔄 เปลี่ยนคน</button>
@@ -135,7 +87,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, push, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAyMBXAGwYUXg-Rj0oM85D0wFLV1HGbbT8",
@@ -155,47 +107,29 @@
     const totalCountLabel = document.getElementById("stat-total");
     const customAlert = document.getElementById("custom-alert");
 
-    const playSound = (type, customSpeechText) => {
-        try {
-            if (type === 'funny-error') {
-                if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
-                    currentUtterance = new SpeechSynthesisUtterance(customSpeechText || "อ๊ะอ๊า! เลขนี้สแกนซ้ำนะจ๊ะ");
-                    currentUtterance.lang = 'th-TH';
-                    currentUtterance.rate = 1.1;
-                    currentUtterance.pitch = 1.8;
-                    window.speechSynthesis.speak(currentUtterance);
-                    return; 
-                }
-            }
+    // ฟังก์ชันส่งเสียงทันทีแบบ Realtime (ไม่ดีเลย์)
+    const playSoundImmediate = (speechText) => {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // ตัดบทเสียงเก่าทันที
+            currentUtterance = new SpeechSynthesisUtterance(speechText);
+            currentUtterance.lang = 'th-TH';
+            currentUtterance.rate = 1.1;
+            currentUtterance.pitch = 1.8;
+            window.speechSynthesis.speak(currentUtterance);
+        }
+    };
 
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            
+    const playSuccessBeep = () => {
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain); 
-            gain.connect(audioCtx.destination);
-            
-            if (type === 'success') {
-                osc.frequency.setValueAtTime(900, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                osc.start(); 
-                osc.stop(audioCtx.currentTime + 0.1);
-            } else { 
-                osc.type = 'sawtooth'; 
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                osc.start(); 
-                osc.stop(audioCtx.currentTime + 0.3);
-            }
-        } catch(e) {
-            console.error("Audio Playback Error:", e);
-        }
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(900, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        } catch(e) {}
     };
 
     let userId = localStorage.getItem("move_shelf_user");
@@ -206,12 +140,9 @@
     document.getElementById("display-name").innerText = userId;
 
     const userListRef = ref(db, `users/${userId}/numbers`);
-    const userAlertRef = ref(db, `users/${userId}/alerts`);
 
     let items = [];
     let itemsValuesOnly = []; 
-    let isFirstLoad = true;
-    let lastAlertTs = 0;
     let alertTimeout;
 
     document.addEventListener("click", (e) => {
@@ -238,7 +169,6 @@
     document.getElementById("reset-btn").onclick = () => {
         if (confirm("ต้องการล้างข้อมูลในกระดานนี้ทั้งหมดใช่ไหม?")) {
             remove(userListRef); 
-            remove(userAlertRef);
             popup("🧹 ล้างข้อมูลสะอาดเอี่ยม!");
         }
     };
@@ -247,7 +177,6 @@
         const data = snap.val();
         items = [];
         itemsValuesOnly = [];
-        
         if (data) {
             Object.entries(data).forEach(([key, val]) => {
                 items.push({ key: key, val: val });
@@ -257,72 +186,54 @@
         updateUI();
     });
 
-    const alertQuery = query(userAlertRef, limitToLast(1));
-    onValue(alertQuery, (snap) => {
-        if (isFirstLoad) { isFirstLoad = false; return; }
-        const data = snap.val();
-        if (!data) return;
-        const alertItem = Object.values(data)[0];
-        
-        if (alertItem.ts > lastAlertTs) {
-            lastAlertTs = alertItem.ts;
-            
-            let speechText = "เลขนี้สแกนซ้ำนะจ๊ะ";
-            if (alertItem.msg.includes("รูปแบบโค้ดไม่ถูกต้อง")) {
-                speechText = "โค้ดผิด!  ตรวจสอบโค้ดด้วย จ๊ะ";
-            }
-            
-            playSound('funny-error', speechText); 
-            popup(alertItem.msg, true);
-        }
-    });
-
+    // ส่วนประมวลผลการสแกน (เพิ่มเงื่อนไขใหม่และยิงเสียงทันที)
     inputField.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
             const val = inputField.value.trim();
             inputField.value = "";
             if (!val) return;
-            
-            const now = Date.now();
 
+            // 1. ตรวจสอบว่ามีตัวอักษรภาษาอังกฤษปนมาไหม หรือไม่ใช่ตัวเลขล้วน
             if (!/^\d+$/.test(val)) {
-                inputField.classList.remove("input-error");
-                void inputField.offsetWidth; 
-                inputField.classList.add("input-error");
-                setTimeout(() => inputField.classList.remove("input-error"), 400);
-
-                const msgText = `🚨 รูปแบบโค้ดไม่ถูกต้อง!: ${val}`;
-                const speechText = "โค้ดผิด!  ตรวจสอบโค้ดด้วย จ๊ะ";
-                
-                lastAlertTs = now + 2000; 
-                playSound('funny-error', speechText);
+                triggerInputError();
+                const msgText = `🚨 โค้ดผิด! มีตัวอักษรปน\nตรวจสอบโค้ดด้วย: ${val}`;
+                playSoundImmediate("โค้ดผิด! ตรวจสอบโค้ดด้วย จ๊ะ");
                 popup(msgText, true);
+                return;
+            }
 
-                push(userAlertRef, { msg: msgText, ts: now });
+            // 2. ตรวจสอบเงื่อนไขเลข 0 นำหน้าต้องมีตั้งแต่ 5 ตัวขึ้นไป
+            // หาจำนวนเลข 0 ที่อยู่หน้าสุด เช่น "00008" จะได้ค่าเป็น 4 ตัว
+            const leadingZerosCount = val.match(/^0*/)[0].length;
+            if (leadingZerosCount < 5) {
+                triggerInputError();
+                const msgText = `🚨 โค้ดแปลก! เลข 0 นำหน้าไม่ถึง 5 หลัก\nโค้ดที่เจอ: ${val}`;
+                playSoundImmediate("โค้ดผิด! ตรวจสอบโค้ดด้วย จ๊ะ");
+                popup(msgText, true);
                 return;
             }
             
+            // 3. ตรวจสอบเลขซ้ำ
             if (itemsValuesOnly.includes(val)) {
-                inputField.classList.remove("input-error");
-                void inputField.offsetWidth; 
-                inputField.classList.add("input-error");
-                setTimeout(() => inputField.classList.remove("input-error"), 400);
-
-                const msgText = `🚨  เลขซ้ำจ้า\n${val}`;
-                const speechText = "เลขนี้สแกนซ้ำนะจ๊ะ";
-
-                lastAlertTs = now + 2000; 
-                playSound('funny-error', speechText);
+                triggerInputError();
+                const msgText = `🚨 เลขซ้ำจ้า\n${val}`;
+                playSoundImmediate("เลขนี้สแกนซ้ำนะจ๊ะ");
                 popup(msgText, true);
-
-                push(userAlertRef, { msg: msgText, ts: now });
                 return;
             }
 
-            playSound('success'); 
+            // หากผ่านทุกเงื่อนไข -> บันทึกสำเร็จ
+            playSuccessBeep(); 
             push(userListRef, val);
         }
     });
+
+    function triggerInputError() {
+        inputField.classList.remove("input-error");
+        void inputField.offsetWidth; 
+        inputField.classList.add("input-error");
+        setTimeout(() => inputField.classList.remove("input-error"), 400);
+    }
 
     function updateUI() {
         if (items.length === 0) { 
@@ -330,7 +241,6 @@
             totalCountLabel.innerText = "0"; 
             return; 
         }
-        
         totalCountLabel.innerText = items.length;
         outputField.innerHTML = ''; 
 
@@ -353,7 +263,6 @@
             tag.appendChild(delBtn);
             outputField.appendChild(tag);
         });
-        
         outputField.scrollTop = outputField.scrollHeight; 
     }
 
@@ -363,10 +272,9 @@
         customAlert.className = `alert-animated ${isError ? "alert-error" : "alert-normal"}`;
         customAlert.style.display = "block"; 
         
-       // โค้ดใหม่ ปรับเวลาเพิ่มตามใจชอบเลยครับ
         alertTimeout = setTimeout(() => {
-      customAlert.style.display = "none";
-     }, isError ? 6000 : 4000); // 6000 คือ 6 วินาที (สีแดง) | 4000 คือ 4 วินาที (สีเขียว)
+            customAlert.style.display = "none";
+        }, isError ? 6000 : 4000); 
     }
 </script>
 </body>
