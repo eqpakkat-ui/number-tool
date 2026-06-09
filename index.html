@@ -363,9 +363,10 @@
         customAlert.className = `alert-animated ${isError ? "alert-error" : "alert-normal"}`;
         customAlert.style.display = "block"; 
         
+       // โค้ดใหม่ ปรับเวลาเพิ่มตามใจชอบเลยครับ
         alertTimeout = setTimeout(() => {
-            customAlert.style.display = "none";
-        }, isError ? 3000 : 1500);
+      customAlert.style.display = "none";
+     }, isError ? 6000 : 4000); // 6000 คือ 6 วินาที (สีแดง) | 4000 คือ 4 วินาที (สีเขียว)
     }
 </script>
 </body>
